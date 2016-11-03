@@ -34,6 +34,8 @@ values."
      typescript
      javascript
      react
+     docker
+     python
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
@@ -394,6 +396,7 @@ you should place your code here."
   (setq eshell-prompt-function (make-eshell-prompt-function))
 
   (global-set-key (kbd "C-x m") 'eshell)
+  (global-set-key (kbd "M-n") 'back-to-indentation)
   (global-set-key (kbd "C-c ;") 'delete-other-windows)
   (global-set-key (kbd "C-c g") 'my-find-grep)
   )
