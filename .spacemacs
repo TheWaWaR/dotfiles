@@ -31,10 +31,13 @@ values."
    ;; List of configuration layers to load.
    dotspacemacs-configuration-layers
    '(
-     html
      python
      rust
      docker
+     html
+     react
+     typescript
+     javascript
      ;; ----------------------------------------------------------------
      ;; Example of useful layers you may want to use right away.
      ;; Uncomment some layer names and press <SPC f e R> (Vim style) or
@@ -51,8 +54,8 @@ values."
      ;;        shell-default-height 30
      ;;        shell-default-position 'bottom)
      ;; spell-checking
-     ;; syntax-checking
-     ;; version-control
+     syntax-checking
+     version-control
      )
    ;; List of additional packages that will be installed without being
    ;; wrapped in a layer. If you need some configuration for these
@@ -81,6 +84,17 @@ values."
   ;; This setq-default sexp is an exhaustive list of all the supported
   ;; spacemacs settings.
   (setq-default
+   ;; js2-mode
+   js2-basic-offset 2
+   ;; web-mode
+   js-indent-level 2
+   css-indent-offset 2
+   web-mode-markup-indent-offset 2
+   web-mode-css-indent-offset 2
+   web-mode-code-indent-offset 2
+   web-mode-attr-indent-offset 2
+
+   indent-tabs-mode t
    ;; If non nil ELPA repositories are contacted via HTTPS whenever it's
    ;; possible. Set it to nil if you have no way to use HTTPS in your
    ;; environment, otherwise it is strongly recommended to let it set to t.
@@ -304,7 +318,89 @@ layers configuration.
 This is the place where most of your configurations should be done. Unless it is
 explicitly specified that a variable should be set before a package is loaded,
 you should place your code here."
+
+;;;; Eshell 命令绑定
+  ;; cls 清屏
+  (defun eshell/cls()
+    "to clear the eshell buffer."
+    (interactive)
+    (let ((inhibit-read-only t))
+      (erase-buffer)))
+
+  ;; 打开文件
+  (defun eshell/em (&rest files)
+    (let ((the-files (if (listp (car files))
+                         (car files)
+                       files)))
+      (eshell-printn (format "Edit: %S" the-files))
+      (while the-files (find-file (pop the-files)))))
+
+  (defun make-eshell-prompt-function ()
+    " 设置 esehll 提示符样式的函数.
+    Create at: <2012-10-18 18:10:00>
+    Finish at: <2012-10-18 23:24:53>
+    Examples:
+    ============================================================
+    1. /                      --> (23:17) ➜ / $
+    2. /etc                   --> (23:17) ➜ /etc $
+    3. /home/weet             --> (23:17) ➜ ~ $
+    4. /home/weet/Games       --> (23:17) ➜ ~/Games $
+    5. /home/weet/Games/braid --> (23:17) ➜ Games/braid $
+    >>> 我们浪费大量时间用来纠结, 却不去老老实实整理需求!!! "
+
+    (interactive)
+    (lambda ()
+      (concat "(" (format-time-string "%H:%M") " ~ ) " "-> "
+              (let ((eshell-pwd (eshell/pwd)) (home-dir (getenv "HOME")))
+                (if (or (string= eshell-pwd home-dir) (string= eshell-pwd "~")) "~"
+                  ;; Not in HOME
+                  (let ((cur-path-list (cdr (split-string eshell-pwd "/")))
+                        (home-path-list (cdr (split-string home-dir "/")))
+                        )
+                    (let ((cur-path-len (length cur-path-list)))
+                      ;; (message (concat (number-to-string cur-path-len) ": "
+                      ;;                  (car cur-path-list) "(...)"
+                      ;;                  (car (last cur-path-list 1))))
+                      (if (= cur-path-len 1)
+                          (concat "/" (if (string< "" (car cur-path-list))
+                                          (car cur-path-list)))
+                        ;; Neither ( / ) nor ( /bar )
+                        (concat
+                         (if (and (= (- cur-path-len (length home-path-list)) 1)
+                                  (equal  (reverse  (cdr (reverse  cur-path-list))) home-path-list)) "~"
+                           (nth (- cur-path-len 2) cur-path-list))
+                         "/" (car (last cur-path-list))))))))
+              (if (= (user-uid) 0) " # " " $ "))))
+
+;;; Copy from grep.el.gz -> grep-find function
+  (defun my-find-grep (command-args)
+    (interactive
+     (progn
+       (grep-compute-defaults)
+       (setq file-regx (read-string "File regx: "))
+       (setq str-regx (read-string "String regx: "))
+       (setq my-grep-find-command
+             (format "find . -type f \\( -name \"%s\" \\) -exec egrep -nH -e \"%s\" {} +"
+                     file-regx str-regx))
+       (if my-grep-find-command
+           (list (read-shell-command "Run find (like this): "
+                                     my-grep-find-command 'grep-find-history))
+         ;; No default was set
+         (read-string
+          "compile.el: No `grep-find-command' command available. Press RET.")
+         (list nil))))
+    (when command-args
+      (let ((null-device nil))		; see grep
+        (grep command-args))))
+
   (xterm-mouse-mode -1)
+
+  (setq eshell-prompt-function (make-eshell-prompt-function))
+
+  (global-set-key (kbd "C-x m") 'eshell)
+  (global-set-key (kbd "M-n") 'back-to-indentation)
+  (global-set-key (kbd "C-c ;") 'delete-other-windows)
+  (global-set-key (kbd "C-c g") 'my-find-grep)
   )
 
 ;; Do not write anything past this comment. This is where Emacs will
@@ -316,7 +412,7 @@ you should place your code here."
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (dockerfile-mode docker json-mode tablist docker-tramp json-snatcher json-reformat web-mode tagedit slim-mode scss-mode sass-mode pug-mode less-css-mode haml-mode emmet-mode company-web web-completion-data company-statistics company-anaconda company auto-yasnippet yasnippet ac-ispell auto-complete yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode cython-mode anaconda-mode pythonic rust-mode smeargle orgit org mmm-mode markdown-toc markdown-mode magit-gitflow gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link gh-md evil-magit magit wgrep smex ivy-hydra counsel-projectile counsel swiper ivy zenburn-theme ws-butler window-numbering which-key volatile-highlights vi-tilde-fringe uuidgen use-package toml-mode toc-org spacemacs-theme spaceline restart-emacs request rainbow-delimiters racer quelpa popwin persp-mode pcre2el paradox org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint info+ indent-guide ido-vertical-mode hungry-delete hl-todo highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-args evil-anzu eval-sexp-fu elisp-slime-nav dumb-jump define-word column-enforce-mode clean-aindent-mode cargo auto-highlight-symbol auto-compile aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line))))
+    (tide git-gutter-fringe flycheck-rust seq flycheck-pos-tip pos-tip web-beautify typescript-mode livid-mode skewer-mode simple-httpd js2-refactor multiple-cursors js2-mode js-doc git-gutter-fringe+ fringe-helper git-gutter+ git-gutter flycheck diff-hl company-tern dash-functional tern coffee-mode dockerfile-mode docker json-mode tablist docker-tramp json-snatcher json-reformat web-mode tagedit slim-mode scss-mode sass-mode pug-mode less-css-mode haml-mode emmet-mode company-web web-completion-data company-statistics company-anaconda company auto-yasnippet yasnippet ac-ispell auto-complete yapfify pyvenv pytest pyenv-mode py-isort pip-requirements live-py-mode hy-mode cython-mode anaconda-mode pythonic rust-mode smeargle orgit org mmm-mode markdown-toc markdown-mode magit-gitflow gitignore-mode gitconfig-mode gitattributes-mode git-timemachine git-messenger git-link gh-md evil-magit magit wgrep smex ivy-hydra counsel-projectile counsel swiper ivy zenburn-theme ws-butler window-numbering which-key volatile-highlights vi-tilde-fringe uuidgen use-package toml-mode toc-org spacemacs-theme spaceline restart-emacs request rainbow-delimiters racer quelpa popwin persp-mode pcre2el paradox org-plus-contrib org-bullets open-junk-file neotree move-text macrostep lorem-ipsum linum-relative link-hint info+ indent-guide ido-vertical-mode hungry-delete hl-todo highlight-parentheses highlight-numbers highlight-indentation hide-comnt help-fns+ helm-themes helm-swoop helm-projectile helm-mode-manager helm-make helm-flx helm-descbinds helm-ag google-translate golden-ratio flx-ido fill-column-indicator fancy-battery eyebrowse expand-region exec-path-from-shell evil-visualstar evil-visual-mark-mode evil-unimpaired evil-tutor evil-surround evil-search-highlight-persist evil-numbers evil-nerd-commenter evil-mc evil-matchit evil-lisp-state evil-indent-plus evil-iedit-state evil-exchange evil-escape evil-ediff evil-args evil-anzu eval-sexp-fu elisp-slime-nav dumb-jump define-word column-enforce-mode clean-aindent-mode cargo auto-highlight-symbol auto-compile aggressive-indent adaptive-wrap ace-window ace-link ace-jump-helm-line))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
