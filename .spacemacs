@@ -87,6 +87,7 @@ values."
   ;; This setq-default sexp is an exhaustive list of all the supported
   ;; spacemacs settings.
   (setq-default
+   mac-command-modifier 'meta
    ;; js2-mode
    js2-basic-offset 2
    ;; web-mode
